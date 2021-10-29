@@ -123,17 +123,20 @@ def render_video(clipfile, semitones_list, times_list):
     return(CompositeVideoClip(song))
 
 
-def render_standalone(clip, filename):
+def save_standalone(clip, filename):
     if clip is None:
         return
     clip.write_videofile(filename)
 
 
-def render_collage(clips, filename):
+def save_collage(clips, filename):
     if len(clips) == 0:
         return
-    render_standalone(clips_array(clips), filename)
+    save_standalone(clips_array(clips), filename)
 
+
+def blank_clip():
+    return ColorClip((100, 100), (0, 0, 0), duration=2)
 
 if __name__ == '__main__':
     try:
@@ -141,7 +144,7 @@ if __name__ == '__main__':
         source_midi_track = int(sys.argv[2])
         file_source_clip = sys.argv[3]
     except IndexError:
-        print("Usage:\n  PYTPMV.py <midi file> <track number (-1 for auto)> <video clip>\n\nCreate YTPMVs automatically from a MIDI file and one video clip for the specified track.")
+        raise SystemExit("Usage:\n  PYTPMVCreator.py <midi file> <track number (-1 for auto)> <video clip>\n\nCreate YTPMVs automatically from a MIDI file and one video clip for the specified track.\nRun the Helper program instead for a better experience!")
 
     render_video(file_source_clip, *get_semitones_timeline(file_source_midi, source_midi_track)).write_videofile("output_ytpmv.webm")
-    print("\nPYTPMVCreator job is done!")
+    print("\nThanks! PYTPMVCreator job is done.")

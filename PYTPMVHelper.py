@@ -26,6 +26,12 @@ q_multichoice_modes = {
         {"name": "Join track(s) in a finalized collage"},
     ]
 }
+q_input_gridsize = {
+    "type": "input",
+    "name": "gridsize",
+    "message": "Divide clips in how many columns?",
+    "validate": lambda answer : True if answer.isdigit() and 0 < int(answer) < 6 else "Input an integer between 1 and 6 (inclusive).",
+}
 
 
 print("Welcome to the YTPMV Creator Helper program!")
@@ -71,13 +77,19 @@ processed_clips = []
 for track, clip in zip(chosen_tracks, chosen_clips):
     print(f"\nWorking on track #{track}...")
     processed_clip = pytpmv.render_video(clip.strip().strip("'"), *pytpmv.get_semitones_timeline(file_source_midi, track))
-    if "Output track(s) as separate video files" in output_modes:
-        pytpmv.render_standalone(processed_clip, f"output_singleclip_t{track}.mp4")
-    if "Join track(s) in a finalized collage" in output_modes:
-        processed_clips.append(processed_clip)
+    if processed_clip is not None:
+        if "Output track(s) as separate video files" in output_modes:
+            pytpmv.save_standalone(processed_clip, f"output_singleclip_t{track}.mp4")
+        if "Join track(s) in a finalized collage" in output_modes:
+            processed_clips.append(processed_clip)
 
 if len(processed_clips) != 0:
-    #print(processed_clips)
-    pytpmv.render_collage([processed_clips], "output_pytpmv.mp4")
+    gridsize = int(prompt(q_input_gridsize)["gridsize"])
+    processed_clips = [processed_clips[i:i + gridsize] for i in range(0, len(processed_clips), gridsize)]
+    if len(processed_clips[-1]) != len(processed_clips[0]):
+        processed_clips[-1].extend([pytpmv.blank_clip() for i in range(gridsize-len(processed_clips[-1]))])
+    #processed_clips = [processed_clips]
+    print(processed_clips)
+    pytpmv.save_collage(processed_clips, "output_pytpmv.mp4")
 
-print("\nPYTPMVHelper job is done!")
+print("\nThanks! PYTPMVHelper job is done.")
