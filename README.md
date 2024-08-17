@@ -1,6 +1,6 @@
 # PYTPMV-NG
 
-PYTPMV-NG is a fork of PYTPMV, this ai slop repo adds flipping support, hopefuly things will get cleaned up
+PYTPMV-NG is a fork of PYTPMV, this ai slop repo adds flipping support, hopefuly things will get cleaned up later
 
 Python YTPMV-NG generator. Input a MIDI file and video clips, get a rendered YTPMV in video!
 
