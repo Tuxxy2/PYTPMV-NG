@@ -1,6 +1,8 @@
-# PYTPMV
+# PYTPMV-NG
 
-Python YTPMV generator. Input a MIDI file and video clips, get a rendered YTPMV in video!
+PYTPMV-NG is a fork of PYTPMV, this ai slop repo adds flipping support, hopefuly things will get cleaned up
+
+Python YTPMV-NG generator. Input a MIDI file and video clips, get a rendered YTPMV in video!
 
 ## Installation
 
