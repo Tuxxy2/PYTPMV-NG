@@ -2,7 +2,7 @@ from moviepy.editor import *
 from mido import MidiFile
 import mido, sys
 import math, statistics
-
+import uuid
 
 def get_semitones_timeline(midifile, tracknum):
     miditofreq = lambda notecode : (440/32) * (2** ((notecode-9) /12))
@@ -83,21 +83,27 @@ def get_track_names(midifile):
     return tracks_list
 
 
-def render_video(clipfile, semitones_list, times_list):
-    if semitones_list == [] or times_list == []:
+
+
+
+
+def render_video(clipfile, semitones_list, *, output_file=None, with_audio=True):
+    if semitones_list == [] or semitones_list[0] == [] or semitones_list[1] == []:
         return None
     print("Running MoviePy...")
     semittospeed = lambda semitones : math.pow(2, (semitones/12))
 
-    #print(semitones_list)
-    #print(times_list)
+    # Create a flipped version of the video
+    tmp_clipfile = f"{os.path.splitext(clipfile)[0]}_tmp{os.path.splitext(clipfile)[1]}"
+    os.system(f"ffmpeg -i {clipfile} -vf hflip -c:a copy {tmp_clipfile}")
 
     try:
-        clip = VideoFileClip(clipfile)
+        clip1 = VideoFileClip(clipfile)
+        clip2 = VideoFileClip(tmp_clipfile)
     except (OSError, IndexError):
         raise SystemExit("Not a valid video file.")
 
-    if clip.duration > 0.5:
+    if clip1.duration > 0.5:
         try:
             cutstart = float(input("Clip is longer than maximum (0.5s). Cut at which timestamp (in seconds)? "))
             cutdur = float(input("Cut for how much time (maximum 0.5s)? "))
@@ -110,41 +116,61 @@ def render_video(clipfile, semitones_list, times_list):
             print("Must be maximum 0.5s. Defaulting to cutting for 0.5s")
 
         try:
-            clip = clip.subclip(cutstart, cutstart+cutdur)
+            clip1 = clip1.subclip(cutstart, cutstart+cutdur)
+            clip2 = clip2.subclip(cutstart, cutstart+cutdur)
         except ValueError:
-            print(f"Must be lower than clip's duration ({clip.duration}). Defaulting to cutting from 0 to 0.5")
-            clip = clip.subclip(0, 0.5)
+            print(f"Must be lower than clip's duration ({clip1.duration}). Defaulting to cutting from 0 to 0.5")
+            clip1 = clip1.subclip(0, 0.5)
+            clip2 = clip2.subclip(0, 0.5)
 
     song = []
+    clip_alternate = True
 
-    for i, j in zip(semitones_list, times_list):
-        song.append(clip.fx(vfx.speedx, semittospeed(i)).set_start(j))
+    for i, j in zip(semitones_list[0], semitones_list[1]):
+        if clip_alternate:
+            song.append(clip1.fx(vfx.speedx, semittospeed(i)).set_start(j))
+        else:
+            song.append(clip2.fx(vfx.speedx, semittospeed(i)).set_start(j))
+        clip_alternate = not clip_alternate
 
-    return(CompositeVideoClip(song))
+    final_clip = CompositeVideoClip(song)
+    output_file = f"{os.path.splitext(clipfile)[0]}_output_{uuid.uuid4().hex[:6]}.mp4"
+    final_clip.write_videofile(output_file)
 
+    os.remove(tmp_clipfile)
 
-def save_standalone(clip, filename):
-    if clip is None:
-        return
-    clip.write_videofile(filename)
-
-
-def save_collage(clips, filename):
-    if len(clips) == 0:
-        return
-    save_standalone(clips_array(clips), filename)
-
-
-def blank_clip():
-    return ColorClip((100, 100), (0, 0, 0), duration=2)
+    return CompositeVideoClip(song)
+    
 
 if __name__ == '__main__':
     try:
         file_source_midi = sys.argv[1]
         source_midi_track = int(sys.argv[2])
         file_source_clip = sys.argv[3]
-    except IndexError:
-        raise SystemExit("Usage:\n  PYTPMVCreator.py <midi file> <track number (-1 for auto)> <video clip>\n\nCreate YTPMVs automatically from a MIDI file and one video clip for the specified track.\nRun the Helper program instead for a better experience!")
+        with_audio = True
+        if len(sys.argv) > 4 and sys.argv[4] == '--no-audio':
+            with_audio = False
 
-    render_video(file_source_clip, *get_semitones_timeline(file_source_midi, source_midi_track)).write_videofile("output_ytpmv.webm")
+    except IndexError:
+
+        raise SystemExit("Usage:\n  PYTPMVCreator.py <midi file> <track number (-1 for auto)> <video clip> [--no-audio]\n\nCreate YTPMVs automatically from a MIDI file and one video clip for the specified track.\nRun the Helper program instead for a better experience!")
+
+
+    if with_audio:
+
+        render_video(file_source_clip, *get_semitones_timeline(file_source_midi, source_midi_track), with_audio=True).write_videofile("output_ytpmv.webm", 
+                                                                                                             codec="libvpx",
+                                                                                                             bitrate="5000k",
+                                                                                                             fps=30,
+                                                                                                             audio_codec="libvorbis",
+                                                                                                             audio_bitrate="128k")
+
+    else:
+
+        render_video(file_source_clip, *get_semitones_timeline(file_source_midi, source_midi_track), with_audio=False).write_videofile("output_ytpmv.webm", 
+                                                                                                             codec="libvpx",
+                                                                                                             bitrate="5000k",
+                                                                                                             fps=30)
+
     print("\nThanks! PYTPMVCreator job is done.")
+    os.remove(tmp_clipfile)
